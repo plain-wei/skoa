@@ -55,7 +55,7 @@ const context = {
       headerSent = true;
     }
 
-    this.app.$emit('error', error, this);
+    this.app.emit('error', error, this);
 
     if (headerSent) return;
 
@@ -111,7 +111,7 @@ delegate(context, 'request')
   .method('acceptsEncodings')
   .method('acceptsCharsets')
   .method('accepts')
-  .method('get')
+  .method('getHeader')
   .method('is')
   .access('querystring')
   .access('idempotent')

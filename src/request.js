@@ -25,7 +25,7 @@ const IP = Symbol('context#ip');
  * Prototype.
  */
 
-module.exports = {
+const _request = {
 
   get headers() {
     return this.request.headers;
@@ -129,13 +129,13 @@ module.exports = {
 
 
   get host() {
-    const proxy = this.app.proxy;
+    const trustProxy = this.app.trustProxy;
 
-    let host = proxy && this.get('X-Forwarded-Host');
+    let host = trustProxy && this.getHeader('X-Forwarded-Host');
 
     if (!host) {
-      if (this.request.httpVersionMajor >= 2) host = this.get(':authority');
-      if (!host) host = this.get('Host');
+      if (this.request.httpVersionMajor >= 2) host = this.getHeader(':authority');
+      if (!host) host = this.getHeader('Host');
     }
     if (!host) return '';
 
@@ -214,7 +214,7 @@ module.exports = {
   },
 
   get length() {
-    const len = this.get('Content-Length');
+    const len = this.getHeader('Content-Length');
 
     if (len === '') return;
 
@@ -225,7 +225,7 @@ module.exports = {
   get protocol() {
     if (this.socket.encrypted) return 'https';
     if (!this.app.proxy) return 'http';
-    const proto = this.get('X-Forwarded-Proto');
+    const proto = this.getHeader('X-Forwarded-Proto');
 
 
     return proto ? proto.split(/\s*,\s*/, 1)[0] : 'http';
@@ -239,7 +239,7 @@ module.exports = {
 
   get ips() {
     const proxy = this.app.proxy;
-    const val = this.get('X-Forwarded-For');
+    const val = this.getHeader('X-Forwarded-For');
 
 
     return proxy && val
@@ -305,14 +305,14 @@ module.exports = {
   },
 
   get type() {
-    const type = this.get('Content-Type');
+    const type = this.getHeader('Content-Type');
 
     if (!type) return '';
 
     return type.split(';')[0];
   },
 
-  get(field) {
+  getHeader(field) {
     const request = this.request;
 
     switch (field = field.toLowerCase()) {
@@ -341,5 +341,7 @@ module.exports = {
 
 /* istanbul ignore else */
 if (util.inspect.custom) {
-  module.exports[util.inspect.custom] = module.exports.inspect;
+  _request[util.inspect.custom] = _request.inspect;
 }
+
+export default _request;
