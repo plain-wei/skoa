@@ -26,20 +26,20 @@ const _response = {
 
 
   get socket() {
-    return this.response.socket;
+    return this.res.socket;
   },
 
+  get header() {
+    const { res } = this;
+
+    return typeof res.getHeaders === 'function' ? res.getHeaders() : res._headers || {}; // Node < 7.7
+  },
   get headers() {
-    const { response } = this;
-
-
-    return typeof response.getHeaders === 'function'
-      ? response.getHeaders()
-      : response._headers || {}; // Node < 7.7
+    return this.header;
   },
 
   get status() {
-    return this.response.statusCode;
+    return this.res.statusCode;
   },
 
   set status(code) {
@@ -48,17 +48,17 @@ const _response = {
     assert(Number.isInteger(code), 'status code must be a number');
     assert(code >= 100 && code <= 999, `invalid status code: ${code}`);
     this._explicitStatus = true;
-    this.response.statusCode = code;
-    if (this.request.httpVersionMajor < 2) this.response.statusMessage = statuses[code];
+    this.res.statusCode = code;
+    if (this.request.httpVersionMajor < 2) this.res.statusMessage = statuses[code];
     if (this.body && statuses.empty[code]) this.body = null;
   },
 
   get message() {
-    return this.response.statusMessage || statuses[this.status];
+    return this.res.statusMessage || statuses[this.status];
   },
 
   set message(msg) {
-    this.response.statusMessage = msg;
+    this.res.statusMessage = msg;
   },
 
   get body() {
@@ -73,9 +73,9 @@ const _response = {
     // no content
     if (val == null) {
       if (!statuses.empty[this.status]) this.status = 204;
-      this.remove('Content-Type');
-      this.remove('Content-Length');
-      this.remove('Transfer-Encoding');
+      this.removeHeader('Content-Type');
+      this.removeHeader('Content-Length');
+      this.removeHeader('Transfer-Encoding');
 
       return;
     }
@@ -104,11 +104,11 @@ const _response = {
 
     // stream
     if (typeof val.pipe === 'function') {
-      onFinish(this.response, destroy.bind(null, val));
+      onFinish(this.res, destroy.bind(null, val));
       ensureErrorHandler(val, (err) => this.ctx.onerror(err));
 
       // overwriting
-      if (original != null && original !== val) this.remove('Content-Length');
+      if (original != null && original !== val) this.removeHeader('Content-Length');
 
       if (setType) this.type = 'bin';
 
@@ -116,7 +116,7 @@ const _response = {
     }
 
     // json
-    this.remove('Content-Length');
+    this.removeHeader('Content-Length');
     this.type = 'json';
   },
 
@@ -149,14 +149,14 @@ const _response = {
 
 
   get headerSent() {
-    return this.response.headersSent;
+    return this.res.headersSent;
   },
 
 
   vary(field) {
     if (this.headerSent) return;
 
-    vary(this.response, field);
+    vary(this.res, field);
   },
 
   redirect(url, alt) {
@@ -253,7 +253,7 @@ const _response = {
     else if (typeof field === 'string' && field && val) {
       if (Array.isArray(val)) val = val.map((v) => (typeof v === 'string' ? v : String(v)));
       else if (typeof val !== 'string') val = String(val);
-      this.response.setHeader(field, val);
+      this.res.setHeader(field, val);
     }
   },
 
@@ -273,15 +273,15 @@ const _response = {
   removeHeader(field) {
     if (this.headerSent) return;
 
-    this.response.removeHeader(field);
+    this.res.removeHeader(field);
   },
 
 
   get writable() {
     // can't write any more after response finished
-    if (this.response.finished) return false;
+    if (this.res.finished) return false;
 
-    const socket = this.response.socket;
+    const socket = this.res.socket;
     // There are already pending outgoing response, but still writable
     // https://github.com/nodejs/node/blob/v4.4.7/lib/_http_server.js#L486
 
@@ -291,7 +291,7 @@ const _response = {
   },
 
   inspect() {
-    if (!this.response) return;
+    if (!this.res) return;
     const o = this.toJSON();
 
     o.body = this.body;
@@ -311,7 +311,7 @@ const _response = {
    * Flush any set headers, and begin the body
    */
   flushHeaders() {
-    this.response.flushHeaders();
+    this.res.flushHeaders();
   },
 };
 

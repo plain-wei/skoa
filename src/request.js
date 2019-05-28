@@ -21,27 +21,31 @@ const { URL } = url;
 const stringify = url.format;
 const IP = Symbol('context#ip');
 
-/**
- * Prototype.
- */
-
 const _request = {
 
   get headers() {
-    return this.request.headers;
+    return this.req.headers;
   },
 
   set headers(val) {
-    this.request.headers = val;
+    this.req.headers = val;
+  },
+
+  get header() {
+    return this.headers;
+  },
+
+  set header(val) {
+    this.headers = val;
   },
 
   get url() {
-    return this.request.url;
+    return this.req.url;
   },
 
 
   set url(val) {
-    this.request.url = val;
+    this.req.url = val;
   },
 
 
@@ -59,20 +63,20 @@ const _request = {
 
 
   get method() {
-    return this.request.method;
+    return this.req.method;
   },
 
   set method(val) {
-    this.request.method = val;
+    this.req.method = val;
   },
 
   get path() {
-    return parse(this.request).pathname;
+    return parse(this.req).pathname;
   },
 
 
   set path(path) {
-    const requestUrl = parse(this.request);
+    const requestUrl = parse(this.req);
 
     if (requestUrl.pathname === path) return;
 
@@ -100,13 +104,13 @@ const _request = {
   },
 
   get querystring() {
-    if (!this.request) return '';
+    if (!this.req) return '';
 
-    return parse(this.request).query || '';
+    return parse(this.req).query || '';
   },
 
   set querystring(str) {
-    const requestUrl = parse(this.request);
+    const requestUrl = parse(this.req);
 
     if (requestUrl.search === `?${str}`) return;
 
@@ -134,7 +138,7 @@ const _request = {
     let host = trustProxy && this.getHeader('X-Forwarded-Host');
 
     if (!host) {
-      if (this.request.httpVersionMajor >= 2) host = this.getHeader(':authority');
+      if (this.req.httpVersionMajor >= 2) host = this.getHeader(':authority');
       if (!host) host = this.getHeader('Host');
     }
     if (!host) return '';
@@ -198,12 +202,12 @@ const _request = {
   },
 
   get socket() {
-    return this.request.socket;
+    return this.req.socket;
   },
 
   get charset() {
     try {
-      const { parameters } = contentType.parse(this.request);
+      const { parameters } = contentType.parse(this.req);
 
 
       return parameters.charset || '';
@@ -271,7 +275,7 @@ const _request = {
   },
 
   get accept() {
-    this._accept = this._accept || accepts(this.request);
+    this._accept = this._accept || accepts(this.req);
 
     return this._accept;
   },
@@ -298,10 +302,10 @@ const _request = {
 
 
   is(types, ...args) {
-    if (!types) return typeis(this.request);
+    if (!types) return typeis(this.req);
     if (!Array.isArray(types)) types = [ types, ...args ];
 
-    return typeis(this.request, types);
+    return typeis(this.req, types);
   },
 
   get type() {
@@ -313,19 +317,19 @@ const _request = {
   },
 
   getHeader(field) {
-    const request = this.request;
+    const req = this.req;
 
     switch (field = field.toLowerCase()) {
       case 'referer':
       case 'referrer':
-        return request.headers.referrer || request.headers.referer || '';
+        return req.headers.referrer || req.headers.referer || '';
       default:
-        return request.headers[field] || '';
+        return req.headers[field] || '';
     }
   },
 
   inspect() {
-    if (!this.request) return;
+    if (!this.req) return;
 
     return this.toJSON();
   },

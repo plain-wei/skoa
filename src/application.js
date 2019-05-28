@@ -1,3 +1,4 @@
+/* eslint-disable no-multi-assign */
 import http from 'http';
 import util from 'util';
 import Debug from 'debug';
@@ -6,11 +7,11 @@ import statuses from 'statuses';
 import Stream from 'stream';
 
 import compose from './utils/compose';
-import context from './context';
-import request from './request';
-import response from './response';
+import _context from './context';
+import _request from './request';
+import _response from './response';
 
-import { isJSON } from './utils';
+import { isJSON, only } from './utils';
 
 const debug = Debug('skoa:application');
 
@@ -23,45 +24,28 @@ module.exports = class Application extends EventEmitter {
     this.middleware = [];
     this.subdomainOffset = 2;
     this.env = process.env.NODE_ENV || 'development';
-    this.context = Object.create(context);
-    this.request = Object.create(request);
-    this.response = Object.create(response);
+    this.context = Object.create(_context);
+    this.request = Object.create(_request);
+    this.response = Object.create(_response);
 
     if (util.inspect.custom) this[util.inspect.custom] = this.inspect;
   }
 
   createContext(req, res) {
-    const ctx = Object.create(this.context);
+    const context = Object.create(this.context);
+    const request = context.request = Object.create(this.request);
+    const response = context.response = Object.create(this.response);
 
-    ctx.request = Object.create(this.request);
-    ctx.response = Object.create(this.response);
+    context.app = request.app = response.app = this;
+    context.req = request.req = response.req = req;
+    context.res = request.res = response.res = res;
+    request.ctx = response.ctx = context;
+    request.response = response;
+    response.request = request;
+    context.originalUrl = request.originalUrl = req.url;
+    context.state = {};
 
-    const _request = ctx.request;
-    const _response = ctx.response;
-
-    // request
-    _request.app = this;
-    _request.request = req;
-    _request.response = res;
-    _request.ctx = ctx;
-    _request.response = res;
-    _request.originalUrl = req.url;
-
-    // response
-    _response.app = this;
-    _response.request = req;
-    _response.response = res;
-    _response.ctx = ctx;
-    _request.request = req;
-
-    // context
-    ctx.app = this;
-    ctx.request = req;
-    ctx.response = res;
-    ctx.originalUrl = req.url;
-    ctx.state = {};
-
-    return ctx;
+    return context;
   }
 
   listen(...args) {
@@ -80,6 +64,9 @@ module.exports = class Application extends EventEmitter {
 
   callback() {
     const fn = compose(this.middleware);
+    // 如果没有错误事件监听，则在这里监听
+
+    if (!this.listenerCount('error')) this.on('error', this.onError);
 
     return (req, res) => {
       const ctx = this.createContext(req, res);
@@ -98,8 +85,29 @@ module.exports = class Application extends EventEmitter {
     return middlewareFn(ctx).then(handleResponse).catch(onError);
   }
 
+  toJSON() {
+    return only(this, [
+      'subdomainOffset',
+      'proxy',
+      'env',
+    ]);
+  }
+
   inspect() {
     return this.toJSON();
+  }
+
+  onError(err) {
+    if (!(err instanceof Error)) throw new TypeError(util.format('non-error thrown: %j', err));
+
+    if (err.status === 404 || err.expose) return;
+    if (this.silent) return;
+
+    const msg = err.stack || err.toString();
+
+    console.error();
+    console.error(msg.replace(/^/gm, '  '));
+    console.error();
   }
 };
 
@@ -107,7 +115,7 @@ function respond(ctx) {
 // allow bypassing koa
   if (ctx.respond === false || !ctx.writable) return;
 
-  const res = ctx.response;
+  const { res } = ctx;
 
   let body = ctx.body;
   const code = ctx.status;

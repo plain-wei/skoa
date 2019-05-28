@@ -91,7 +91,7 @@ if (util.inspect.custom) {
 delegate(context, 'response')
   .method('attachment')
   .method('redirect')
-  .method('remove')
+  .method('removeHeader')
   .method('vary')
   .method('setHeader')
   .method('append')
