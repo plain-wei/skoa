@@ -8,8 +8,11 @@ import Cookies from 'cookies';
 const COOKIES = Symbol('context#cookies');
 
 const context = {
+  inspect() {
+    if (this === context) return this;
 
-  inspect : () => (this === context ? this : this.toJSON()),
+    return this.toJSON();
+  },
 
   toJSON() {
     return {

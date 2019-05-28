@@ -23,58 +23,27 @@ const IP = Symbol('context#ip');
 
 const _request = {
 
-  get headers() {
-    return this.req.headers;
-  },
+  get headers() { return this.req.headers; },
+  set headers(val) { this.req.headers = val; },
 
-  set headers(val) {
-    this.req.headers = val;
-  },
+  get header() { return this.headers; },
+  set header(val) { this.headers = val; },
 
-  get header() {
-    return this.headers;
-  },
+  get url() { return this.req.url; },
+  set url(val) { this.req.url = val; },
 
-  set header(val) {
-    this.headers = val;
-  },
-
-  get url() {
-    return this.req.url;
-  },
-
-
-  set url(val) {
-    this.req.url = val;
-  },
-
-
-  get origin() {
-    return `${this.protocol}://${this.host}`;
-  },
-
-
-  get href() {
-    // support: `GET http://example.com/foo`
+  get origin() { return `${this.protocol}://${this.host}`; },
+  get href() { // 获取完整的请求URL，包括 protocol，host 和 url。
     if (/^https?:\/\//i.test(this.originalUrl)) return this.originalUrl;
 
     return this.origin + this.originalUrl;
   },
 
+  get method() { return this.req.method; },
+  set method(val) { this.req.method = val; },
 
-  get method() {
-    return this.req.method;
-  },
-
-  set method(val) {
-    this.req.method = val;
-  },
-
-  get path() {
-    return parse(this.req).pathname;
-  },
-
-
+  // 请求路径名称
+  get path() { return parse(this.req).pathname; },
   set path(path) {
     const requestUrl = parse(this.req);
 
@@ -190,20 +159,15 @@ const _request = {
     return false;
   },
 
-  get stale() {
-    return !this.fresh;
-  },
+  get stale() { return !this.fresh; },
 
   get idempotent() {
     const methods = [ 'GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'TRACE' ];
 
-
-    return methods.indexOf(this.method) > -1;
+    return methods.includes(this.method);
   },
 
-  get socket() {
-    return this.req.socket;
-  },
+  get socket() { return this.req.socket; },
 
   get charset() {
     try {
@@ -228,7 +192,7 @@ const _request = {
 
   get protocol() {
     if (this.socket.encrypted) return 'https';
-    if (!this.app.proxy) return 'http';
+    if (!this.app.trustProxy) return 'http';
     const proto = this.getHeader('X-Forwarded-Proto');
 
 
@@ -236,19 +200,15 @@ const _request = {
   },
 
 
-  get secure() {
-    return this.protocol === 'https';
-  },
+  get secure() { return this.protocol === 'https'; },
 
 
   get ips() {
-    const proxy = this.app.proxy;
+    if (!this.app.trustProxy) return [];
+
     const val = this.getHeader('X-Forwarded-For');
 
-
-    return proxy && val
-      ? val.split(/\s*,\s*/)
-      : [];
+    return val ? val.split(/\s*,\s*/) : [];
   },
   get ip() {
     if (!this[IP]) {
@@ -258,9 +218,7 @@ const _request = {
     return this[IP];
   },
 
-  set ip(_ip) {
-    this[IP] = _ip;
-  },
+  set ip(_ip) { this[IP] = _ip; },
 
   get subdomains() {
     const offset = this.app.subdomainOffset;
@@ -280,25 +238,15 @@ const _request = {
     return this._accept;
   },
 
-  set accept(obj) {
-    this._accept = obj;
-  },
+  set accept(obj) { this._accept = obj; },
 
 
-  accepts(...args) {
-    return this.accept.types(...args);
-  },
+  accepts(...args) { return this.accept.types(...args); },
 
-  acceptsEncodings(...args) {
-    return this.accept.encodings(...args);
-  },
+  acceptsEncodings(...args) { return this.accept.encodings(...args); },
 
-  acceptsCharsets(...args) {
-    return this.accept.charsets(...args);
-  },
-  acceptsLanguages(...args) {
-    return this.accept.languages(...args);
-  },
+  acceptsCharsets(...args) { return this.accept.charsets(...args); },
+  acceptsLanguages(...args) { return this.accept.languages(...args); },
 
 
   is(types, ...args) {
@@ -311,9 +259,7 @@ const _request = {
   get type() {
     const type = this.getHeader('Content-Type');
 
-    if (!type) return '';
-
-    return type.split(';')[0];
+    return type ? type.split(';')[0] : '';
   },
 
   getHeader(field) {

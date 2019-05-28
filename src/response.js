@@ -24,24 +24,20 @@ const extname = Extname.extname;
 
 const _response = {
 
-
-  get socket() {
-    return this.res.socket;
-  },
+  get socket() { return this.res.socket; },
 
   get header() {
     const { res } = this;
 
-    return typeof res.getHeaders === 'function' ? res.getHeaders() : res._headers || {}; // Node < 7.7
-  },
-  get headers() {
-    return this.header;
-  },
+    if (typeof res.getHeaders === 'function') {
+      return res.getHeaders();
+    }
 
-  get status() {
-    return this.res.statusCode;
+    return res._headers || {};
   },
+  get headers() { return this.header; },
 
+  get status() { return this.res.statusCode; },
   set status(code) {
     if (this.headerSent) return;
 
@@ -53,26 +49,18 @@ const _response = {
     if (this.body && statuses.empty[code]) this.body = null;
   },
 
-  get message() {
-    return this.res.statusMessage || statuses[this.status];
-  },
+  get message() { return this.res.statusMessage || statuses[this.status]; },
+  set message(msg) { this.res.statusMessage = msg; },
 
-  set message(msg) {
-    this.res.statusMessage = msg;
-  },
-
-  get body() {
-    return this._body;
-  },
+  get body() { return this._body; },
 
   set body(val) {
     const original = this._body;
 
     this._body = val;
 
-    // no content
     if (val == null) {
-      if (!statuses.empty[this.status]) this.status = 204;
+      if (!statuses.empty[this.status]) this.status = 204; // 204 means no content
       this.removeHeader('Content-Type');
       this.removeHeader('Content-Length');
       this.removeHeader('Transfer-Encoding');
@@ -80,7 +68,7 @@ const _response = {
       return;
     }
 
-    // set the status
+    // set the status 当前的 status 没有被特别的设置过，则返回 200
     if (!this._explicitStatus) this.status = 200;
 
     // set the content-type only if not yet set
@@ -148,9 +136,7 @@ const _response = {
   },
 
 
-  get headerSent() {
-    return this.res.headersSent;
-  },
+  get headerSent() { return this.res.headersSent; },
 
 
   vary(field) {
@@ -224,9 +210,7 @@ const _response = {
   get type() {
     const type = this.getHeader('Content-Type');
 
-    if (!type) return '';
-
-    return type.split(';', 1)[0];
+    return type ? type.split(';', 1)[0] : '';
   },
 
 
@@ -245,12 +229,12 @@ const _response = {
 
 
   setHeader(field, val) {
-    if (this.headerSent) return;
+    if (this.headerSent || !field) return;
 
     if (typeof field === 'object' && !val) {
       Object.entries(field).forEach(([ k, v ]) => this.setHeader(k, v));
     }
-    else if (typeof field === 'string' && field && val) {
+    else if (typeof field === 'string' && val) {
       if (Array.isArray(val)) val = val.map((v) => (typeof v === 'string' ? v : String(v)));
       else if (typeof val !== 'string') val = String(val);
       this.res.setHeader(field, val);
@@ -292,19 +276,15 @@ const _response = {
 
   inspect() {
     if (!this.res) return;
-    const o = this.toJSON();
+    const obj = this.toJSON();
 
-    o.body = this.body;
+    obj.body = this.body;
 
-    return o;
+    return obj;
   },
 
   toJSON() {
-    return only(this, [
-      'status',
-      'message',
-      'header',
-    ]);
+    return only(this, [ 'status', 'message', 'header' ]);
   },
 
   /**
